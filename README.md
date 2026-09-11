@@ -62,7 +62,7 @@ Princípios seguidos:
 
 | Decisão | Escolha | Por quê |
 |---|---|---|
-| LLM | **Groq API** (`llama-3.3-70b-versatile`) | Inference em hardware próprio (LPU) com centenas de tokens/s — latência muito baixa; tier gratuito sem cartão de crédito; preço por token entre os mais baixos do mercado (US$0,59/US$0,79 por milhão de tokens). Alternativa local via **Ollama** já implementada atrás da mesma interface (`LLMClient`), bastando trocar `LLM_PROVIDER=ollama` no `.env` — útil se não houver internet ou se quiser custo zero mesmo no free tier. |
+| LLM | **Groq API** (`openai/gpt-oss-120b`) | Inference em hardware próprio (LPU) com centenas de tokens/s — latência muito baixa; tier gratuito sem cartão de crédito; preço por token entre os mais baixos do mercado (US$0,15/US$0,60 por milhão de tokens). `openai/gpt-oss-20b` é uma alternativa ainda mais rápida e barata (US$0,075/US$0,30 por milhão), caso a velocidade importe mais que a qualidade da resposta. Alternativa local via **Ollama** já implementada atrás da mesma interface (`LLMClient`), bastando trocar `LLM_PROVIDER=ollama` no `.env` — útil se não houver internet ou se quiser custo zero mesmo no free tier. |
 | Embeddings | `sentence-transformers` (`paraphrase-multilingual-MiniLM-L12-v2`), local | Modelo leve (~120 MB), multilíngue (essencial para PT-BR), roda em CPU em milissegundos e sem custo por chamada — evita pagar por embeddings a cada ingestão. |
 | Banco vetorial | **ChromaDB** (persistência local em arquivo) | Embarcado, sem servidor externo, gratuito, simples de configurar — adequado ao volume pequeno/médio de documentos deste projeto e ao requisito de deploy local. |
 | Interface | **Streamlit** | Interface web mínima, mesma tecnologia do projeto Uai Sô, permite construir um chat funcional (histórico, loading, tratamento de erro) em poucas linhas. |
@@ -119,13 +119,14 @@ python -m tests.eval_qa
 
 ## Custo estimado
 
-Com o Groq (`llama-3.3-70b-versatile`, US$0,59 / US$0,79 por milhão de
+Com o Groq (`openai/gpt-oss-120b`, US$0,15 / US$0,60 por milhão de
 tokens de entrada/saída):
 
 - Uma interação típica (pergunta + ~4 trechos de contexto + resposta) usa
   aproximadamente 600–1.000 tokens de entrada e 150–300 de saída.
-- Custo por pergunta: **≈ US$0,0006–0,0011** (menos de um décimo de
-  centavo de dólar).
+- Custo por pergunta: **≈ US$0,0002–0,0003** (uma fração de centavo de
+  dólar) — confirmado na prática pelo `tests/eval_qa.py`, que mediu
+  ≈US$0,0002 para um lote de 6 perguntas.
 - O tier gratuito da Groq (sem cartão) já cobre um volume alto de perguntas
   para fins de demonstração e uso pessoal, sem custo algum.
 - Os embeddings (sentence-transformers) rodam localmente e têm **custo
@@ -137,9 +138,10 @@ tokens de entrada/saída):
 
 - **Recuperação (embeddings + busca no Chroma)**: tipicamente < 100ms em
   CPU comum, para a base documental atual (poucas dezenas de chunks).
-- **Geração (Groq, `llama-3.3-70b-versatile`)**: ~1–2 segundos para uma
+- **Geração (Groq, `openai/gpt-oss-120b`)**: ~1–2 segundos para uma
   resposta de 150–300 tokens, dado o throughput de centenas de tokens/s da
-  Groq.
+  Groq. Medido na prática: latência média de ≈1,3s por pergunta no
+  `tests/eval_qa.py`.
 - **Latência total por pergunta**: tipicamente entre 1 e 3 segundos.
 - Com Ollama local, a latência passa a depender do hardware disponível
   (pode ser mais lenta em máquinas sem GPU).
@@ -164,9 +166,20 @@ portas do domínio, sem depender de rede ou de modelos reais, e cobrem o
 chunker, o carregador de documentos, os templates de prompt e a lógica de
 orquestração do `ChatService`).
 
+Já `tests/debug_retrieval.py` isola só a recuperação (sem chamar o LLM):
+mostra, para um conjunto de perguntas, todos os chunks candidatos com seu
+score de similaridade bruto, sem aplicar o limiar `RAG_MIN_SCORE`. Foi essa
+ferramenta que revelou um bug real no chunker (títulos curtos seguidos de
+tabelas longas geravam dezenas de chunks quase idênticos, que dominavam o
+`top_k` e escondiam os trechos corretos) — corrigido, o que elevou a
+assertividade do golden set de 33% para 100%.
+
 ```bash
 # Testes unitários (rápidos, sem rede)
 pytest tests/ -v
+
+# Diagnóstico de recuperação (scores brutos, sem LLM)
+python -m tests.debug_retrieval
 
 # Avaliação fim-a-fim (requer índice construído e API configurada)
 python -m tests.eval_qa
@@ -205,17 +218,23 @@ chatbot-fundeb-icms-mg/
 │   │   ├── uaiso_continuacao.md
 │   │   ├── regras_negocio.md
 │   │   └── legislacao/
-│   └── chroma_db/                 # Índice vetorial persistido (gitignored)
+│   └── chroma_db/                 # Índice vetorial persistido
 └── tests/
     ├── test_chunker.py
     ├── test_document_loader.py
     ├── test_prompt_templates.py
     ├── test_chat_service.py
+    ├── debug_retrieval.py         # Diagnóstico de recuperação (scores brutos)
     └── eval_qa.py                 # Avaliação fim-a-fim (golden set)
 ```
 
 ## Limitações e próximos passos
 
+- A Groq descontinua modelos com alguma frequência (ex.: `llama-3.3-70b-versatile`
+  foi desativado em ago/2026). Se `GROQ_MODEL` retornar erro 404
+  `model_not_found`, confira a lista atual em
+  [console.groq.com/docs/models](https://console.groq.com/docs/models) e
+  atualize a variável no `.env` — o código não precisa mudar.
 - A base de conhecimento atual cobre README, notas de continuação e regras
   de negócio extraídas do código do Uai Sô. Para aprofundar respostas
   sobre a legislação, recomenda-se adicionar o texto oficial das normas
