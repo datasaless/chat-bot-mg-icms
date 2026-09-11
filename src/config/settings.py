@@ -24,7 +24,9 @@ class Settings:
 
     # Groq
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
-    groq_model: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    # llama-3.3-70b-versatile foi descontinuado pela Groq em ago/2026;
+    # openai/gpt-oss-120b é o substituto recomendado pela própria Groq.
+    groq_model: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
     # Ollama (execução 100% local, sem custo de API)
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
