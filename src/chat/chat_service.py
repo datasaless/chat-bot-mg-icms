@@ -12,7 +12,7 @@ from src.domain.entities import ChatAnswer, ChatMessage, Role, Source
 from src.domain.ports import EmbeddingModel, LLMClient, VectorStore
 from src.generation.prompt_templates import SYSTEM_PROMPT, build_user_prompt
 
-MIN_RELEVANCE_SCORE = 0.15
+MIN_RELEVANCE_SCORE = 0.25
 
 
 class ChatService:
@@ -22,11 +22,13 @@ class ChatService:
         vector_store: VectorStore,
         llm_client: LLMClient,
         top_k: int = 4,
+        min_relevance_score: float = MIN_RELEVANCE_SCORE,
     ) -> None:
         self._embedder = embedder
         self._vector_store = vector_store
         self._llm_client = llm_client
         self._top_k = top_k
+        self._min_relevance_score = min_relevance_score
 
     def ask(self, question: str, history: list[ChatMessage] | None = None) -> ChatAnswer:
         history = history or []
@@ -43,7 +45,7 @@ class ChatService:
 
         question_embedding = self._embedder.embed([question])[0]
         retrieved = self._vector_store.query(question_embedding, self._top_k)
-        relevant = [r for r in retrieved if r.score >= MIN_RELEVANCE_SCORE]
+        relevant = [r for r in retrieved if r.score >= self._min_relevance_score]
 
         user_prompt = build_user_prompt(question, relevant)
         messages = [*history, ChatMessage(role=Role.USER, content=user_prompt)]
@@ -55,6 +57,7 @@ class ChatService:
                 title=item.chunk.source_title,
                 path=item.chunk.source_path,
                 snippet=_snippet(item.chunk.text),
+                relevance_score=round(item.score, 3),
             )
             for item in _deduplicate_by_source(relevant)
         ]
