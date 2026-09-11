@@ -26,7 +26,7 @@ from src.chat.factory import build_chat_service
 from src.config.settings import settings
 
 # Preço aproximado por 1M tokens (USD) — apenas referência, atualizar conforme
-# a tabela de preços vigente da Groq (console.groq.com).
+# a tabela de preços vigente da Groq (console.groq.com/docs/models).
 PRECO_POR_1M_TOKENS = {
     "openai/gpt-oss-120b": {"input": 0.15, "output": 0.60},
     "openai/gpt-oss-20b": {"input": 0.075, "output": 0.30},
@@ -37,39 +37,41 @@ PRECO_POR_1M_TOKENS = {
 class CasoTeste:
     pergunta: str
     palavras_chave: list[str]
-    fonte_esperada: str
+    fontes_esperadas: tuple[str, ...] = ()  # aceita qualquer uma das fontes listadas
 
 
 CASOS_TESTE = [
     CasoTeste(
         pergunta="Qual é a fórmula do IQE?",
         palavras_chave=["IRAP", "0,50", "0.50"],
-        fonte_esperada="regras_negocio.md",
+        fontes_esperadas=("regras_negocio.md",),
     ),
     CasoTeste(
         pergunta="O que é o VAAR?",
         palavras_chave=["FUNDEB", "complementação"],
-        fonte_esperada="regras_negocio.md",
+        fontes_esperadas=("regras_negocio.md",),
     ),
     CasoTeste(
         pergunta="Quais são as condicionalidades para um município receber o VAAR?",
         palavras_chave=["SAEB", "BNCC", "80%"],
-        fonte_esperada="regras_negocio.md",
+        fontes_esperadas=("regras_negocio.md",),
     ),
     CasoTeste(
         pergunta="Quais leis fundamentam o ICMS Educacional em Minas Gerais?",
         palavras_chave=["24.431", "18.030"],
-        fonte_esperada="regras_negocio.md",
+        fontes_esperadas=("regras_negocio.md",),
     ),
     CasoTeste(
         pergunta="Quais páginas o sistema Uai Sô oferece?",
         palavras_chave=["Calculadora", "Mapa", "Ranking"],
-        fonte_esperada="uaiso_readme.md",
+        # README e CONTINUACAO têm listas de páginas equivalentes — qualquer
+        # um dos dois como fonte é uma resposta correta.
+        fontes_esperadas=("uaiso_readme.md", "uaiso_continuacao.md"),
     ),
     CasoTeste(
         pergunta="Qual é a capital da Mongólia?",
         palavras_chave=["não encontr", "não há", "não tenho"],
-        fonte_esperada="",  # espera-se que o bot recuse por falta de contexto
+        fontes_esperadas=(),  # espera-se que o bot recuse por falta de contexto
     ),
 ]
 
@@ -89,9 +91,8 @@ def run() -> None:
 
         texto_lower = resposta.text.lower()
         tem_palavra_chave = any(p.lower() in texto_lower for p in caso.palavras_chave)
-        tem_fonte = (
-            not caso.fonte_esperada
-            or any(caso.fonte_esperada in s.path for s in resposta.sources)
+        tem_fonte = not caso.fontes_esperadas or any(
+            fe in s.path for fe in caso.fontes_esperadas for s in resposta.sources
         )
         passou = tem_palavra_chave and tem_fonte
         acertos += int(passou)
