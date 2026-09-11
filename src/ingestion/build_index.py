@@ -51,8 +51,7 @@ def build_index() -> int:
     print(f"Total de {len(all_chunks)} chunks. Gerando embeddings "
           f"({settings.embedding_model_name})...")
     embedder = SentenceTransformerEmbedder(settings.embedding_model_name)
-    embedding_inputs = [f"{chunk.source_title}: {chunk.text}" for chunk in all_chunks]
-    embeddings = embedder.embed(embedding_inputs)
+    embeddings = embedder.embed([chunk.text for chunk in all_chunks])
 
     print(f"Persistindo no banco vetorial em: {CHROMA_DB_DIR}")
     store = ChromaVectorStore(CHROMA_DB_DIR, settings.collection_name)
