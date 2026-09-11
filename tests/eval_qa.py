@@ -28,8 +28,8 @@ from src.config.settings import settings
 # Preço aproximado por 1M tokens (USD) — apenas referência, atualizar conforme
 # a tabela de preços vigente da Groq (console.groq.com).
 PRECO_POR_1M_TOKENS = {
-    "llama-3.3-70b-versatile": {"input": 0.59, "output": 0.79},
-    "llama-3.1-8b-instant": {"input": 0.05, "output": 0.08},
+    "openai/gpt-oss-120b": {"input": 0.15, "output": 0.60},
+    "openai/gpt-oss-20b": {"input": 0.075, "output": 0.30},
 }
 
 
@@ -100,6 +100,11 @@ def run() -> None:
 
         status = "✅ PASSOU" if passou else "❌ FALHOU"
         print(f"{status} | {duracao:.2f}s | {caso.pergunta}")
+        if resposta.sources:
+            fontes_str = ", ".join(
+                f"{s.path}({s.relevance_score:.2f})" for s in resposta.sources
+            )
+            print(f"   fontes: {fontes_str}")
         if not passou:
             print(f"   resposta: {resposta.text[:200]}")
 

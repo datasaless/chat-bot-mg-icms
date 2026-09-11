@@ -36,4 +36,5 @@ def build_chat_service() -> ChatService:
         vector_store=vector_store,
         llm_client=llm_client,
         top_k=settings.top_k,
+        min_relevance_score=settings.min_relevance_score,
     )

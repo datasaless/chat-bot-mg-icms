@@ -61,7 +61,10 @@ if question:
         if answer.sources:
             with st.expander("📚 Fontes utilizadas"):
                 for source in answer.sources:
-                    st.markdown(f"**{source.title}** (`{source.path}`)")
+                    st.markdown(
+                        f"**{source.title}** (`{source.path}`) "
+                        f"— similaridade: `{source.relevance_score:.2f}`"
+                    )
                     st.caption(source.snippet)
         elif not answer.context_found:
             st.caption(

@@ -38,9 +38,10 @@ class Settings:
     )
 
     # Recuperação
-    top_k: int = int(os.getenv("RAG_TOP_K", "4"))
-    chunk_size: int = int(os.getenv("RAG_CHUNK_SIZE", "800"))
-    chunk_overlap: int = int(os.getenv("RAG_CHUNK_OVERLAP", "120"))
+    top_k: int = int(os.getenv("RAG_TOP_K", "6"))
+    chunk_size: int = int(os.getenv("RAG_CHUNK_SIZE", "500"))
+    chunk_overlap: int = int(os.getenv("RAG_CHUNK_OVERLAP", "100"))
+    min_relevance_score: float = float(os.getenv("RAG_MIN_SCORE", "0.25"))
 
     collection_name: str = "uaiso_docs"
 

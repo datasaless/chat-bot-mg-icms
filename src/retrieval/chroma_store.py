@@ -18,7 +18,10 @@ from src.domain.ports import VectorStore
 class ChromaVectorStore(VectorStore):
     def __init__(self, persist_dir: Path, collection_name: str) -> None:
         self._client = chromadb.PersistentClient(path=str(persist_dir))
-        self._collection = self._client.get_or_create_collection(name=collection_name)
+        self._collection = self._client.get_or_create_collection(
+            name=collection_name,
+            metadata={"hnsw:space": "cosine"},
+        )
 
     def upsert(self, chunks: list[DocumentChunk], embeddings: list[list[float]]) -> None:
         if not chunks:
@@ -54,7 +57,7 @@ class ChromaVectorStore(VectorStore):
             )
             # Chroma retorna distância (quanto menor, mais similar); convertemos
             # para um score de similaridade no intervalo aproximado [0, 1].
-            score = 1.0 / (1.0 + distance)
+            score = 1.0 - distance
             retrieved.append(RetrievedChunk(chunk=chunk, score=score))
 
         return retrieved

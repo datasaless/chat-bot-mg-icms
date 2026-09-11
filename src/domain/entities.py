@@ -44,7 +44,7 @@ class Source:
     title: str
     path: str
     snippet: str
-
+    relevance_score: float = 0.0
 
 @dataclass(frozen=True)
 class ChatAnswer:
